@@ -16,6 +16,7 @@ import HelloWorld from './components/HelloWorld.vue'
       <HelloWorld msg="Testing msg" />
             <HelloWorld msg="Testing #002" />
               <HelloWorld msg="Testing #003" />
+                      <HelloWorld msg="Testing #004" />
 
 </template>
 
