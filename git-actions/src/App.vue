@@ -13,7 +13,7 @@ import HelloWorld from './components/HelloWorld.vue'
   </div>
   <HelloWorld msg="heloooooooo git hub" />
     <HelloWorld msg="setting up github-actions" />
-      <HelloWorld msg="Testing actions" />
+      <HelloWorld msg="Testing msg" />
 
 </template>
 
