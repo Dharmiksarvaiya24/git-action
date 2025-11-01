@@ -3,85 +3,23 @@ name: pull-req trigger
 on:
   pull_request:
     types: [opened]
-
+    
 permissions:
   pull-requests: write
   issues: write
 
 jobs:
-  pr-api-update:
+  pr-comment:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      
-      - name: Send PR data to API and capture response
-        id: call_api
-        env:
-          API_URL: ${{ secrets.API_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
-          echo "Sending PR #${PR_NUMBER} to API..."
-
-         
-          RESPONSE=$(curl -s -X POST "$API_URL" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "number": "'"$PR_NUMBER"'",
-              "title": "'"$PR_TITLE"'",
-              "author": "'"$PR_AUTHOR"'",
-              "branch": "'"$PR_BRANCH"'"
-            }')
-
-          echo "API responded: $RESPONSE"
-
-          # Store the API response for later use in the workflow
-          echo "api_response<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESPONSE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-      - name: Comment on the PR
+      - name: pr-review
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = context.issue.number;
-            await github.rest.issues.createComment({
-              issue_number: prNumber,
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "Hello! This PR was processed and sent to the API."
-            });
-            console.log("Comment added to PR #" + prNumber);
-      - name: Update PR description with API response
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            const apiResponse = `${{ steps.call_api.outputs.api_response }}`;
-
-            let message = apiResponse;
-            try {
-              const parsed = JSON.parse(apiResponse);
-              message = parsed.summary || JSON.stringify(parsed, null, 2);
-            } catch (e) {
-              console.log("Response not valid JSON, using raw text.");
-            }
-
-            const currentBody = context.payload.pull_request.body || "";
-            const newBody = `${currentBody}\n\n---\n🤖 **API Response:**\n${message}`;
-
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              body: newBody
-            });
-
-            console.log("Updated PR description with API response!");
+              body: "Hello !"
+              body: "Hello PR commented by Actions!"
+            })
