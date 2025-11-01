@@ -16,23 +16,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: pr-review
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-
-            // 1️⃣ Comment on PR
-            await github.rest.issues.createComment({
-              issue_number: pr.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "Hello PR commented by GitHub Actions!"
-            });
-
-            console.log("commented on PR #" + pr.number);
-
-      - name: Send PR data to API
+      - name: Send PR data to API and capture response
+        id: call_api
         env:
           API_URL: ${{ secrets.API_URL }}
           API_KEY: ${{ secrets.API_KEY }}
@@ -41,8 +26,10 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          echo "📡 Sending PR #${PR_NUMBER} to API..."
-          curl -X POST "$API_URL" \
+          echo "Sending PR #${PR_NUMBER} to API..."
+          
+          # Call your API and store the response
+          RESPONSE=$(curl -s -X POST "$API_URL" \
             -H "Authorization: Bearer $API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -50,4 +37,38 @@ jobs:
               "title": "'"$PR_TITLE"'",
               "author": "'"$PR_AUTHOR"'",
               "branch": "'"$PR_BRANCH"'"
-            }'
+            }')
+
+          echo "AI responded: $RESPONSE"
+
+          # Save response to be used in next step
+          echo "api_response<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update PR description with API response
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const apiResponse = `${{ steps.call_api.outputs.api_response }}`;
+
+            let message = apiResponse;
+            try {
+              const parsed = JSON.parse(apiResponse);
+              message = parsed.summary || JSON.stringify(parsed, null, 2);
+            } catch (e) {
+              console.log("Response not valid JSON, using raw text.");
+            }
+
+            const currentBody = context.payload.pull_request.body || "";
+            const newBody = `${currentBody}\n\n---\n🤖 **API Response:**\n${message}`;
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              body: newBody
+            });
+
+            console.log("Updated PR description with API response!");
