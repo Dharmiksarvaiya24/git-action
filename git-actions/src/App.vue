@@ -14,6 +14,7 @@ import HelloWorld from './components/HelloWorld.vue'
   <HelloWorld msg="heloooooooo git hub" />
     <HelloWorld msg="setting up github-actions" />
       <HelloWorld msg="Testing msg" />
+            <HelloWorld msg="Testing #002" />
 
 </template>
 
