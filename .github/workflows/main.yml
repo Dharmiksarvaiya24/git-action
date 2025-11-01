@@ -3,7 +3,7 @@ name: pull-req trigger
 on:
   pull_request:
     types: [opened]
-    
+
 permissions:
   pull-requests: write
   issues: write
@@ -11,15 +11,43 @@ permissions:
 jobs:
   pr-comment:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: pr-review
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const pr = context.payload.pull_request;
+
+            // 1️⃣ Comment on PR
+            await github.rest.issues.createComment({
+              issue_number: pr.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "Hello PR commented by Actions!"
-            })
+              body: "Hello PR commented by GitHub Actions!"
+            });
 
+            console.log("commented on PR #" + pr.number);
+
+      - name: Send PR data to API
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "📡 Sending PR #${PR_NUMBER} to API..."
+          curl -X POST "$API_URL" \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "number": "'"$PR_NUMBER"'",
+              "title": "'"$PR_TITLE"'",
+              "author": "'"$PR_AUTHOR"'",
+              "branch": "'"$PR_BRANCH"'"
+            }'
